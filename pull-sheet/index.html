@@ -3,136 +3,168 @@ layout: default
 title: Update Spreadsheet
 ---
 
-<!--These are JavaScript Libraries-->
-<!-- <script type="text/javascript" src="https://requirejs.org/docs/release/2.3.5/minified/require.js"></script> -->
-
-<script type="text/javascript" src="papaparse.min.js"></script> <!-- https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js -->
-<script type="text/javascript" src="js-yaml.min.js"></script> <!-- https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js -->
-<script type="text/javascript" src="github.js"></script>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Update Spreadsheet</title>
+<link rel="stylesheet" type="text/css" href="./style.css"> <!-- Include the CSS file -->
+</head>
+<body>
 
 <h1>Update</h1>
+<fieldset id="positionFilter">
+  <legend>Filter by Position:</legend>
+  <label><input type="checkbox" value="all"> All</label><br>
+  <label><input type="checkbox" value="Assistant Professor"> Assistant Professor</label><br>
+  <label><input type="checkbox" value="MS(R) student"> MS(R) student</label><br>
+  <label><input type="checkbox" value="PhD student"> PhD student</label><br>
+  <label><input type="checkbox" value="Research Assistant"> Research Assistant</label><br>
+  <label><input type="checkbox" value="Undergraduate student"> Undergraduate student</label><br>
+  <label><input type="checkbox" value="MSc student"> MSc student</label><br>
+  <label><input type="checkbox" value="Intern"> Intern</label><br>
+</fieldset>
+
+<div id="labMembers">
+  <!-- Lab members will be displayed here -->
+</div>
+
+
+<!-- These are JavaScript Libraries -->
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/github/0.9.2/github.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dotenv@10.0.0/dist/dotenv.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="./config.js"></script>
 <script type="text/javascript">
 
-    // dict of all published sheets and corresponding resource names
-    var $resources = {
-        team: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR9Bopp7wygWjBmMaN8_hc4tytmtRc88Dehu1W9B-pjetK_LRcTahB7tRpSPY-tKeAK5w93TC-DKElE/pub?gid=253503174&single=true&output=tsv'
-    }
+// dict of all published sheets and corresponding resource names
+var $resources = {
+    team: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZZFqtCtiF-HE3b-oaDVJUMyHxK9_L-t5gJW7bPvXUHe8me0IkaUlKVMCvzr8X2F5p2T_8349oTRZK/pub?output=tsv'
+};
 
-    var header_maps = {
-        team: {
-            "Acknowledgement": "acknowledgement",
-            "Department / Center / School": "affiliation",
-            "Alumni?": "alumni",
-            "What do you do now?": "alumni_current",
-            "Short bio 1": "bio1",
-            "Short bio 2": "bio2",
-            "Short bio 3": "bio3",
-            "Short bio 4": "bio4",
-            "Display?": "display",
-            "email": "email",
-            "Image": "image",
-            "Name": "name",
-            "Position": "position",
-            "Timestamp": "timestamp",
-            "Year of joining": "year",
+var header_maps = {
+  team: {
+    "timestamp": "timestamp",
+    "name": "name",
+    "position": "position",
+    "email": "email",
+    "bio1": "bio1",
+    "bio2": "bio2",
+    "bio3": "bio3",
+    "bio4": "bio4",
+    "image": "image",
+    "affiliation": "affiliation",
+    "display": "display",
+    "acknowledgement": "acknowledgement",
+    "alumni": "alumni",
+    "alumni_current": "alumni_current",
+    "year": "year",
+  }
+};
+
+// some constants related to gh-pages repository
+var $org = 'Manoj-Katta';
+var $repo = 'webdesign-test-template';
+var $branch = 'gh-pages';
+var $GHToken = GHToken;
+
+
+// Function to fetch team data from team.yaml file
+function fetchTeamData() {
+  return fetch('../_data/team.yaml')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch team data: ${response.statusText}`);
+      }
+      return response.text();
+    })
+    .then(yamlData => {
+      try {
+        const parsedData = jsyaml.load(yamlData);
+        if (Array.isArray(parsedData)) {
+          return parsedData.map(item => {
+            // Transform each record to match the expected format
+            return {
+              name: item.name || '',
+              position: item.position || '',
+              email: item.email || '',
+              bio1: item.bio1 || '',
+              bio2: item.bio2 || '',
+              bio3: item.bio3 || '',
+              bio4: item.bio4 || '',
+              image: item.image || '',
+              affiliation: item.affiliation || '',
+              display: item.display || '',
+              acknowledgement: item.acknowledgement || '',
+              alumni: item.alumni || '',
+              alumni_current: item.alumni_current || '',
+              year: item.year || ''
+            };
+          });
+        } else {
+          throw new Error('Team data is not an array');
         }
+      } catch (error) {
+        throw new Error(`Error parsing YAML data: ${error.message}`);
+      }
+    })
+    .catch(error => console.error('Error fetching or parsing data:', error.message));
+}
+
+
+// Function to filter and display team members based on selected position
+
+function filterAndDisplayMembers() {
+  const checkboxes = document.querySelectorAll('#positionFilter input[type="checkbox"]:checked');
+  const selectedPositions = Array.from(checkboxes).map(checkbox => checkbox.value);
+  
+  fetchTeamData()
+    .then(data => {
+      // Filter data based on selected positions
+      const filteredData = data.filter(member => 
+        selectedPositions.includes('all') || selectedPositions.includes(member.position)
+      );
+
+      // Display filtered members
+      displayMembers(filteredData);
+    })
+    .catch(error => console.error('Error filtering data:', error));
+}
+
+
+
+function displayMembers(members) {
+  const labMembers = document.getElementById('labMembers');
+  // Clear existing member display
+  labMembers.innerHTML = '';
+
+  // Display filtered members
+  members.forEach(member => {
+    const memberDiv = document.createElement('div');
+    memberDiv.innerHTML = `
+      <h2>${member.name}</h2>
+      <p>Position: ${member.position}</p>
+      <p>Email: ${member.email}</p>
+      <p>Bio: ${member.bio1}</p>
+      <img src="${member.image}" alt="${member.name}" width="100">
+    `;
+
+    // Check if labMembers exists before appending
+    if (labMembers) {
+      labMembers.appendChild(memberDiv);
+    } else {
+      console.error('labMembers element not found');
     }
+  });
+}
 
-    // some constants related to gh-pages repository
-    var $org = 'gsaurabhr';
-    var $repo = 'webdesign-test-template';
-    var $branch = 'gh-pages';
-    
-    // this function extracts parameters from the URL to pass on to the javascript
-    function getUrlVar(key){
-        var result = new RegExp(key + "=([^&]*)", "i").exec(window.location.search);
-        return result && unescape(result[1]) || "";
-    }
+// Event listener for position filter selection
+document.querySelectorAll('#positionFilter input[type="checkbox"]').forEach(checkbox => {
+  checkbox.addEventListener('change', filterAndDisplayMembers);
+});
 
-    function getGDriveDlURL(url){
-        // reference: https://github.com/UltiRequiem/drive_link/blob/main/mod.ts
-        const regexp = /https:\/\/drive\.google\.com\/open\?id=(?<id>.*?)$/;
-        if (regexp.test(url)) {
-            const res = regexp.exec(url);
-            var id = res?.groups?.id;
-            return `https://drive.google.com/thumbnail?id=${id.trim()}&sz=w300`
-        }
-        return url;
-    }
-
-    // extract parameters that need to be passed and should not be saved
-    var $GHToken = getUrlVar('ghtoken');
-
-    // variables that we will need later
-    var $yaml_store = "";
-    // var $resource = "";
-
-    function init() {
-        $.each($resources, function(name, url) {
-            // $resource = name;
-            function cb(results) {
-                showInfo(results, name);
-            }
-
-            function map_header(header, index) {
-                return header_maps[name][header];
-            }
-
-            function map_values(value, header) {
-                if ( header == "image" ) {return getGDriveDlURL(value);}
-                if ( header == "display") {return parseInt(value);}
-                if ( header == "alumni") {return parseInt(value);}
-                if ( header == "highlight") {return parseInt(value);}
-                if ( header == "conference") {return parseInt(value);}
-                return value;
-            }
-
-            Papa.parse(url, {
-                delimiter: "\t",
-                download: true,
-                skipEmptyLines: 'greedy',
-                dynamicTyping: 'true',
-                header: true,
-                transformHeader: map_header,
-                transform: map_values,
-                complete: cb
-            });
-        });
-    };
-
-    window.addEventListener('DOMContentLoaded', init)
-
-    function showInfo(results, $resource) {
-        // var GitHub = require('github-api');
-        console.log($resource);
-        console.log(results.data);
-        console.log(results.errors);
-        console.log(results.meta);
-        var data = results.data
-          
-        // data comes through as a simple array since simpleSheet is turned on
-        alert("Successfully processed " + data.length + " rows for " + $resource + "!")
-         
-        $items = new Array();
-
-        $.each( data, function(i, service) {
-            $p = {};
-            $.each(service, function($key, $value) {
-              $p[$key] = $value;
-            });
-            $items.push($p);
-        });
-
-        console.log($items);
-        
-        $yaml_dump = jsyaml.dump($items);
-        document.getElementById('source').value = $yaml_dump;
-
-        var github = new Github({token: $GHToken, auth: "oauth"});
-        var repo = github.getRepo($org, $repo);
-        $writepath = '_data/' + $resource + '.yaml';
-        
-        repo.write($branch, $writepath, $yaml_dump, 'Update ' + $resource, function(err) { console.log(err); });
-    };
 </script>
-<textarea cols="10" rows="5" id="source" style="border: 1px solid #000; width: 100%; height: 500px;"></textarea>
+
+ 
