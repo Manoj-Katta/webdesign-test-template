@@ -36,7 +36,7 @@ title: Update Spreadsheet
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/github/0.9.2/github.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dotenv@10.0.0/dist/dotenv.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="./config.js"></script>
+<script src="./pull-sheet/config.js"></script>
 <script type="text/javascript">
 
 // dict of all published sheets and corresponding resource names
@@ -73,7 +73,7 @@ var $GHToken = GHToken;
 
 // Function to fetch team data from team.yaml file
 function fetchTeamData() {
-  return fetch('../_data/team.yaml')
+  return fetch('./_data/team.yaml')
     .then(response => {
       if (!response.ok) {
         throw new Error(`Failed to fetch team data: ${response.statusText}`);
