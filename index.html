@@ -1,0 +1,170 @@
+---
+layout: default
+title: Update Spreadsheet
+---
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Update Spreadsheet</title>
+<link rel="stylesheet" type="text/css" href="./style.css"> <!-- Include the CSS file -->
+</head>
+<body>
+
+<h1>Update</h1>
+<fieldset id="positionFilter">
+  <legend>Filter by Position:</legend>
+  <label><input type="checkbox" value="all"> All</label><br>
+  <label><input type="checkbox" value="Assistant Professor"> Assistant Professor</label><br>
+  <label><input type="checkbox" value="MS(R) student"> MS(R) student</label><br>
+  <label><input type="checkbox" value="PhD student"> PhD student</label><br>
+  <label><input type="checkbox" value="Research Assistant"> Research Assistant</label><br>
+  <label><input type="checkbox" value="Undergraduate student"> Undergraduate student</label><br>
+  <label><input type="checkbox" value="MSc student"> MSc student</label><br>
+  <label><input type="checkbox" value="Intern"> Intern</label><br>
+</fieldset>
+
+<div id="labMembers">
+  <!-- Lab members will be displayed here -->
+</div>
+
+
+<!-- These are JavaScript Libraries -->
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.1.0/papaparse.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/github/0.9.2/github.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dotenv@10.0.0/dist/dotenv.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="./config.js"></script>
+<script type="text/javascript">
+
+// dict of all published sheets and corresponding resource names
+var $resources = {
+    team: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQZZFqtCtiF-HE3b-oaDVJUMyHxK9_L-t5gJW7bPvXUHe8me0IkaUlKVMCvzr8X2F5p2T_8349oTRZK/pub?output=tsv'
+};
+
+var header_maps = {
+  team: {
+    "timestamp": "timestamp",
+    "name": "name",
+    "position": "position",
+    "email": "email",
+    "bio1": "bio1",
+    "bio2": "bio2",
+    "bio3": "bio3",
+    "bio4": "bio4",
+    "image": "image",
+    "affiliation": "affiliation",
+    "display": "display",
+    "acknowledgement": "acknowledgement",
+    "alumni": "alumni",
+    "alumni_current": "alumni_current",
+    "year": "year",
+  }
+};
+
+// some constants related to gh-pages repository
+var $org = 'Manoj-Katta';
+var $repo = 'webdesign-test-template';
+var $branch = 'gh-pages';
+var $GHToken = GHToken;
+
+
+// Function to fetch team data from team.yaml file
+function fetchTeamData() {
+  return fetch('../_data/team.yaml')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch team data: ${response.statusText}`);
+      }
+      return response.text();
+    })
+    .then(yamlData => {
+      try {
+        const parsedData = jsyaml.load(yamlData);
+        if (Array.isArray(parsedData)) {
+          return parsedData.map(item => {
+            // Transform each record to match the expected format
+            return {
+              name: item.name || '',
+              position: item.position || '',
+              email: item.email || '',
+              bio1: item.bio1 || '',
+              bio2: item.bio2 || '',
+              bio3: item.bio3 || '',
+              bio4: item.bio4 || '',
+              image: item.image || '',
+              affiliation: item.affiliation || '',
+              display: item.display || '',
+              acknowledgement: item.acknowledgement || '',
+              alumni: item.alumni || '',
+              alumni_current: item.alumni_current || '',
+              year: item.year || ''
+            };
+          });
+        } else {
+          throw new Error('Team data is not an array');
+        }
+      } catch (error) {
+        throw new Error(`Error parsing YAML data: ${error.message}`);
+      }
+    })
+    .catch(error => console.error('Error fetching or parsing data:', error.message));
+}
+
+
+// Function to filter and display team members based on selected position
+
+function filterAndDisplayMembers() {
+  const checkboxes = document.querySelectorAll('#positionFilter input[type="checkbox"]:checked');
+  const selectedPositions = Array.from(checkboxes).map(checkbox => checkbox.value);
+  
+  fetchTeamData()
+    .then(data => {
+      // Filter data based on selected positions
+      const filteredData = data.filter(member => 
+        selectedPositions.includes('all') || selectedPositions.includes(member.position)
+      );
+
+      // Display filtered members
+      displayMembers(filteredData);
+    })
+    .catch(error => console.error('Error filtering data:', error));
+}
+
+
+
+function displayMembers(members) {
+  const labMembers = document.getElementById('labMembers');
+  // Clear existing member display
+  labMembers.innerHTML = '';
+
+  // Display filtered members
+  members.forEach(member => {
+    const memberDiv = document.createElement('div');
+    memberDiv.innerHTML = `
+      <h2>${member.name}</h2>
+      <p>Position: ${member.position}</p>
+      <p>Email: ${member.email}</p>
+      <p>Bio: ${member.bio1}</p>
+      <img src="${member.image}" alt="${member.name}" width="100">
+    `;
+
+    // Check if labMembers exists before appending
+    if (labMembers) {
+      labMembers.appendChild(memberDiv);
+    } else {
+      console.error('labMembers element not found');
+    }
+  });
+}
+
+// Event listener for position filter selection
+document.querySelectorAll('#positionFilter input[type="checkbox"]').forEach(checkbox => {
+  checkbox.addEventListener('change', filterAndDisplayMembers);
+});
+
+</script>
+
+ 
