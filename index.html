@@ -8,7 +8,7 @@ title: Update Spreadsheet
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Update Spreadsheet</title>
-<link rel="stylesheet" type="text/css" href="./style.css"> <!-- Include the CSS file -->
+<link rel="stylesheet" type="text/css" href="pull-sheet/style.css"> <!-- Include the CSS file -->
 </head>
 <body>
 
@@ -73,7 +73,7 @@ var $GHToken = GHToken;
 
 // Function to fetch team data from team.yaml file
 function fetchTeamData() {
-  return fetch('./_data/team.yaml')
+  return fetch('_data/team.yaml')
     .then(response => {
       if (!response.ok) {
         throw new Error(`Failed to fetch team data: ${response.statusText}`);
